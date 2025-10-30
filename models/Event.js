@@ -46,6 +46,22 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  comments: {
+    type: [
+      {
+        text: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    default: [],
+  },
 });
 
 // Update timestamp on save
