@@ -122,10 +122,10 @@ const determineEventType = (eventDate) => {
 // 3. POST /api/events - Create new event
 router.post("/", verifyAdmin, async (req, res) => {
   try {
-    const { title, description, eventDate, image } = req.body;
+    const { title, description, eventDate, venue, time, image } = req.body;
 
     // Validate input
-    if (!title || !description || !eventDate) {
+    if (!title || !description || !eventDate || !venue || !time) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -147,6 +147,8 @@ router.post("/", verifyAdmin, async (req, res) => {
       title,
       description,
       eventDate: new Date(eventDate),
+      venue,
+      time,
       eventType,
       image: image || null, // Optional image field
       createdBy: req.adminId,
@@ -171,7 +173,7 @@ router.post("/", verifyAdmin, async (req, res) => {
 router.put("/:id", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, eventDate, image } = req.body;
+    const { title, description, eventDate, venue, time, image } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -203,6 +205,14 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       event.eventDate = new Date(eventDate);
       // Auto-update event type based on new date
       event.eventType = determineEventType(eventDate);
+    }
+
+    // Update venue and time if provided
+    if (venue !== undefined) {
+      event.venue = venue;
+    }
+    if (time !== undefined) {
+      event.time = time;
     }
 
     // Update image if provided (allow null to remove image)
