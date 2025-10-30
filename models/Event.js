@@ -14,6 +14,16 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  venue: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  time: {
+    type: String,
+    required: true,
+    trim: true,
+  },
   eventType: {
     type: String,
     enum: ["past", "current", "upcoming"],
