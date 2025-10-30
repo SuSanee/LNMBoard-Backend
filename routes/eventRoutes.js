@@ -277,36 +277,37 @@ router.post("/:id/comment", async (req, res) => {
     // Check if within 3 days before or 3 days after event date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    
     const eventDate = new Date(event.eventDate);
     eventDate.setHours(0, 0, 0, 0);
-
+    
     const threeDaysBefore = new Date(eventDate);
     threeDaysBefore.setDate(threeDaysBefore.getDate() - 3);
-
+    
     const threeDaysAfter = new Date(eventDate);
     threeDaysAfter.setDate(threeDaysAfter.getDate() + 3);
 
     if (today < threeDaysBefore || today > threeDaysAfter) {
-      return res.status(400).json({
-        message: "Comments can only be added 3 days before or 3 days after the event",
+      return res.status(400).json({ 
+        message: "Comments can only be added 3 days before or 3 days after the event" 
       });
     }
 
-    // Push comment atomically to avoid full document validation issues
-    const updatedEvent = await Event.findByIdAndUpdate(
-      id,
-      { $push: { comments: { text: text.trim(), createdAt: new Date() } } },
-      { new: true }
-    );
+    // Add comment
+    event.comments.push({
+      text: text.trim(),
+      createdAt: new Date(),
+    });
 
-    return res.json({ message: "Comment added successfully", event: updatedEvent });
+    await event.save();
+
+    res.json({
+      message: "Comment added successfully",
+      event: await Event.findById(id)
+    });
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: "Invalid event id" });
-    }
     console.error("Error adding comment:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
