@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import testRoutes from "./routes/testRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
+import accountRoutes from "./routes/accountRoutes.js";
 
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use("/api/test", testRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/account", accountRoutes);
 
 // 🔹 MongoDB Connection
 mongoose
