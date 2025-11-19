@@ -29,6 +29,12 @@ const eventSchema = new mongoose.Schema({
     enum: ["past", "current", "upcoming"],
     required: true,
   },
+  type: {
+    type: String,
+    enum: ["event", "notice"],
+    default: "event",
+    required: true,
+  },
   image: {
     type: String, // Store base64 encoded image or URL
     default: null,

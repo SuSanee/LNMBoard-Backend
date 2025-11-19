@@ -78,7 +78,11 @@ router.get("/", async (req, res) => {
     await updateEventTypes();
     await deleteOldEvents();
 
-    const events = await Event.find()
+    // Optional query parameter to filter by type
+    const { type } = req.query;
+    const query = type ? { type } : {};
+
+    const events = await Event.find(query)
       .populate("createdBy", "name email")
       .sort({ eventDate: 1 });
 
@@ -122,12 +126,15 @@ const determineEventType = (eventDate) => {
 // 3. POST /api/events - Create new event
 router.post("/", verifyAdmin, async (req, res) => {
   try {
-    const { title, description, eventDate, venue, time, image } = req.body;
+    const { title, description, eventDate, venue, time, image, type } = req.body;
 
     // Validate input
     if (!title || !description || !eventDate || !venue || !time) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    // Validate type
+    const itemType = type === "notice" ? "notice" : "event";
 
     // Validate that event date is not in the past
     const today = new Date();
@@ -150,6 +157,7 @@ router.post("/", verifyAdmin, async (req, res) => {
       venue,
       time,
       eventType,
+      type: itemType,
       image: image || null, // Optional image field
       createdBy: req.adminId,
     });
@@ -173,7 +181,7 @@ router.post("/", verifyAdmin, async (req, res) => {
 router.put("/:id", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, eventDate, venue, time, image } = req.body;
+    const { title, description, eventDate, venue, time, image, type } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -205,6 +213,11 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       event.eventDate = new Date(eventDate);
       // Auto-update event type based on new date
       event.eventType = determineEventType(eventDate);
+    }
+
+    // Update type if provided
+    if (type !== undefined) {
+      event.type = type === "notice" ? "notice" : "event";
     }
 
     // Update venue and time if provided
