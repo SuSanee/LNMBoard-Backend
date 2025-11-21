@@ -29,14 +29,8 @@ const eventSchema = new mongoose.Schema({
     enum: ["past", "current", "upcoming"],
     required: true,
   },
-  type: {
-    type: String,
-    enum: ["event", "notice"],
-    default: "event",
-    required: true,
-  },
   image: {
-    type: String, // Store base64 encoded image or URL
+    type: String, // Store Cloudinary URL
     default: null,
   },
   createdBy: {
@@ -52,17 +46,19 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  comments: [{
-    text: {
-      type: String,
-      required: true,
-      trim: true,
+  comments: [
+    {
+      text: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-  }],
+  ],
 });
 
 // Update timestamp on save
@@ -71,7 +67,11 @@ eventSchema.pre("save", function (next) {
   next();
 });
 
+// Add indexes for better query performance
+eventSchema.index({ eventDate: 1 }); // For sorting by date
+eventSchema.index({ createdBy: 1 }); // For filtering by creator
+eventSchema.index({ eventType: 1 }); // For filtering by event type (past/current/upcoming)
+
 const Event = mongoose.model("Event", eventSchema);
 
 export default Event;
-
