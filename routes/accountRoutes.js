@@ -2,10 +2,9 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
+import { jwtSecret } from "../config/index.js";
 
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
 
 // Verify logged-in admin (admin or super-admin)
 const verifyAdmin = async (req, res, next) => {
@@ -15,7 +14,7 @@ const verifyAdmin = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     const admin = await Admin.findById(decoded.id);
 
     if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
@@ -65,8 +64,3 @@ router.post("/change-password", verifyAdmin, async (req, res) => {
 });
 
 export default router;
-
-
-
-
-

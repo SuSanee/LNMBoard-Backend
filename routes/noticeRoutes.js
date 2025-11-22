@@ -2,11 +2,9 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import Notice from "../models/Notice.js";
 import Admin from "../models/Admin.js";
+import { jwtSecret } from "../config/index.js";
 
 const router = express.Router();
-
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
 
 // Middleware to verify admin (both super-admin and admin)
 const verifyAdmin = async (req, res, next) => {
@@ -16,7 +14,7 @@ const verifyAdmin = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     const admin = await Admin.findById(decoded.id);
 
     if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {

@@ -3,14 +3,12 @@ import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
+import config, { port, mongoUri } from "./config/index.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import noticeRoutes from "./routes/noticeRoutes.js";
 import accountRoutes from "./routes/accountRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-
-dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
@@ -29,7 +27,7 @@ app.use("/api/upload", uploadRoutes);
 
 // 🔹 MongoDB Connection
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(mongoUri)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("DB Error:", err));
 
@@ -45,5 +43,4 @@ io.on("connection", (socket) => {
 });
 
 // 🔹 Start Server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(port, () => console.log(`Server running on port ${port}`));

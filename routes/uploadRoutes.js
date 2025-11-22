@@ -3,11 +3,9 @@ import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 import cloudinary from "../utils/cloudinary.js";
 import upload from "../utils/multer.js";
+import { jwtSecret } from "../config/index.js";
 
 const router = express.Router();
-
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
 
 // Middleware to verify admin
 const verifyAdmin = async (req, res, next) => {
@@ -28,9 +26,9 @@ const verifyAdmin = async (req, res, next) => {
       "Token received (first 20 chars):",
       token.substring(0, 20) + "..."
     );
-    console.log("JWT_SECRET being used:", JWT_SECRET.substring(0, 20) + "...");
+    console.log("JWT_SECRET being used:", jwtSecret.substring(0, 20) + "...");
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     console.log("✅ Token decoded successfully, user ID:", decoded.id);
 
     const admin = await Admin.findById(decoded.id);

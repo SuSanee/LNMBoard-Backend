@@ -2,11 +2,9 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
+import { jwtSecret } from "../config/index.js";
 
 const router = express.Router();
-
-// JWT Secret (should be in .env in production)
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
 
 // Middleware to verify super admin
 const verifySuperAdmin = async (req, res, next) => {
@@ -16,7 +14,7 @@ const verifySuperAdmin = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     const admin = await Admin.findById(decoded.id);
 
     if (!admin || admin.role !== "super-admin") {
@@ -59,7 +57,7 @@ router.post("/login", async (req, res) => {
     // Generate token
     const token = jwt.sign(
       { id: admin._id, email: admin.email, role: admin.role },
-      JWT_SECRET,
+      jwtSecret,
       { expiresIn: "24h" }
     );
 

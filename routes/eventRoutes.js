@@ -2,11 +2,9 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import Event from "../models/Event.js";
 import Admin from "../models/Admin.js";
+import { jwtSecret } from "../config/index.js";
 
 const router = express.Router();
-
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-this";
 
 // Middleware to verify admin (both super-admin and admin)
 const verifyAdmin = async (req, res, next) => {
@@ -16,7 +14,7 @@ const verifyAdmin = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     const admin = await Admin.findById(decoded.id);
 
     if (!admin || (admin.role !== "super-admin" && admin.role !== "admin")) {
@@ -35,7 +33,7 @@ const verifyAdmin = async (req, res, next) => {
 const updateEventTypes = async () => {
   try {
     const allEvents = await Event.find();
-
+    
     for (const event of allEvents) {
       const correctType = determineEventType(event.eventDate);
       if (event.eventType !== correctType) {
@@ -74,6 +72,10 @@ setInterval(runDailyTasks, 24 * 60 * 60 * 1000); // Run once per day
 // 1. GET /api/events - Get all events (public)
 router.get("/", async (req, res) => {
   try {
+    // Update event types and delete old events before fetching
+    await updateEventTypes();
+    await deleteOldEvents();
+
     const events = await Event.find()
       .populate("createdBy", "name email")
       .sort({ eventDate: 1 });
@@ -88,9 +90,8 @@ router.get("/", async (req, res) => {
 // 2. GET /api/events/my-events - Get logged-in admin's events
 router.get("/my-events", verifyAdmin, async (req, res) => {
   try {
-    const events = await Event.find({ createdBy: req.adminId }).sort({
-      eventDate: -1,
-    });
+    const events = await Event.find({ createdBy: req.adminId })
+      .sort({ eventDate: -1 });
 
     res.json(events);
   } catch (error) {
@@ -103,10 +104,10 @@ router.get("/my-events", verifyAdmin, async (req, res) => {
 const determineEventType = (eventDate) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
+  
   const eventDateObj = new Date(eventDate);
   eventDateObj.setHours(0, 0, 0, 0);
-
+  
   if (eventDateObj < today) {
     return "past";
   } else if (eventDateObj.getTime() === today.getTime()) {
@@ -133,9 +134,7 @@ router.post("/", verifyAdmin, async (req, res) => {
     selectedDate.setHours(0, 0, 0, 0);
 
     if (selectedDate < today) {
-      return res
-        .status(400)
-        .json({ message: "Cannot create events for past dates" });
+      return res.status(400).json({ message: "Cannot create events for past dates" });
     }
 
     // Auto-determine event type based on date
@@ -149,16 +148,14 @@ router.post("/", verifyAdmin, async (req, res) => {
       venue,
       time,
       eventType,
-      image: image || null,
+      image: image || null, // Optional image field
       createdBy: req.adminId,
     });
 
     await newEvent.save();
 
-    const populatedEvent = await Event.findById(newEvent._id).populate(
-      "createdBy",
-      "name email"
-    );
+    const populatedEvent = await Event.findById(newEvent._id)
+      .populate("createdBy", "name email");
 
     res.status(201).json({
       message: "Event created successfully",
@@ -174,8 +171,7 @@ router.post("/", verifyAdmin, async (req, res) => {
 router.put("/:id", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, eventDate, venue, time, image, type } =
-      req.body;
+    const { title, description, eventDate, venue, time, image } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -183,13 +179,8 @@ router.put("/:id", verifyAdmin, async (req, res) => {
     }
 
     // Check if admin is the creator (or super-admin can edit any)
-    if (
-      req.adminRole !== "super-admin" &&
-      event.createdBy.toString() !== req.adminId
-    ) {
-      return res
-        .status(403)
-        .json({ message: "You can only edit your own events" });
+    if (req.adminRole !== "super-admin" && event.createdBy.toString() !== req.adminId) {
+      return res.status(403).json({ message: "You can only edit your own events" });
     }
 
     // Validate that event date is not in the past (if updating date)
@@ -200,22 +191,26 @@ router.put("/:id", verifyAdmin, async (req, res) => {
       selectedDate.setHours(0, 0, 0, 0);
 
       if (selectedDate < today) {
-        return res
-          .status(400)
-          .json({ message: "Cannot set event date to past dates" });
+        return res.status(400).json({ message: "Cannot set event date to past dates" });
       }
     }
 
     // Update event
     event.title = title || event.title;
     event.description = description || event.description;
-    event.venue = venue || event.venue;
-    event.time = time || event.time;
-
+    
     if (eventDate) {
       event.eventDate = new Date(eventDate);
       // Auto-update event type based on new date
       event.eventType = determineEventType(eventDate);
+    }
+
+    // Update venue and time if provided
+    if (venue !== undefined) {
+      event.venue = venue;
+    }
+    if (time !== undefined) {
+      event.time = time;
     }
 
     // Update image if provided (allow null to remove image)
@@ -225,10 +220,8 @@ router.put("/:id", verifyAdmin, async (req, res) => {
 
     await event.save();
 
-    const updatedEvent = await Event.findById(id).populate(
-      "createdBy",
-      "name email"
-    );
+    const updatedEvent = await Event.findById(id)
+      .populate("createdBy", "name email");
 
     res.json({
       message: "Event updated successfully",
@@ -251,13 +244,8 @@ router.delete("/:id", verifyAdmin, async (req, res) => {
     }
 
     // Check if admin is the creator (or super-admin can delete any)
-    if (
-      req.adminRole !== "super-admin" &&
-      event.createdBy.toString() !== req.adminId
-    ) {
-      return res
-        .status(403)
-        .json({ message: "You can only delete your own events" });
+    if (req.adminRole !== "super-admin" && event.createdBy.toString() !== req.adminId) {
+      return res.status(403).json({ message: "You can only delete your own events" });
     }
 
     await Event.findByIdAndDelete(id);
@@ -287,20 +275,19 @@ router.post("/:id/comment", async (req, res) => {
     // Check if within 3 days before or 3 days after event date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    
     const eventDate = new Date(event.eventDate);
     eventDate.setHours(0, 0, 0, 0);
-
+    
     const threeDaysBefore = new Date(eventDate);
     threeDaysBefore.setDate(threeDaysBefore.getDate() - 3);
-
+    
     const threeDaysAfter = new Date(eventDate);
     threeDaysAfter.setDate(threeDaysAfter.getDate() + 3);
 
     if (today < threeDaysBefore || today > threeDaysAfter) {
-      return res.status(400).json({
-        message:
-          "Comments can only be added 3 days before or 3 days after the event",
+      return res.status(400).json({ 
+        message: "Comments can only be added 3 days before or 3 days after the event" 
       });
     }
 
@@ -314,7 +301,7 @@ router.post("/:id/comment", async (req, res) => {
 
     res.json({
       message: "Comment added successfully",
-      event: await Event.findById(id),
+      event: await Event.findById(id)
     });
   } catch (error) {
     console.error("Error adding comment:", error);
@@ -323,3 +310,4 @@ router.post("/:id/comment", async (req, res) => {
 });
 
 export default router;
+
